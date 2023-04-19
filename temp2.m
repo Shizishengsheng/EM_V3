@@ -26,7 +26,7 @@
 clear;clc;close all;
 p=10;
 n = 1000:1000:10000;
-missing_rate = 0.15;
+missing_rate = 0.1;
 error_mu =zeros(size(n));
 error_Psi = zeros(size(n));
 try_times= 20;

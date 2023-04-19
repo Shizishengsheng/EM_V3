@@ -3,33 +3,20 @@ clear;clc;close all;
 %code start
 p=10;
 n=1000;
-n= 1000:1000:10000;
-missing_rate = 0.0;
+missing_rate = 0;
 max_iteration_times = 100;
-error_mu = [];
-error_Psi = [];
-for i = 1:length(n)
-    [Y, ~, nu, mu, Psi] = GenData(p, n(i), missing_rate);
-    [mu_hat,Psi_hat,~,~] = EM_unknown_tau_v2(Y, nu, max_iteration_times);
-    error_mu(i) = norm((mu-mu_hat),'fro');
-    error_Psi(i) = norm((Psi-Psi_hat),'fro');
-end
-figure;
-plot(1:legnth(n),error_mu/try_times, 'r', 'LineWidth', 2);
-hold on;
+[Y, tau, nu, mu, Psi] = GenData(p, n, missing_rate);
 
-% [Y, tau, nu, mu, Psi] = GenData(p, n, missing_rate);
-% 
-% [mu_hat,Psi_hat,q_store,f_store] = EM_unknown_tau_v2(Y, nu, max_iteration_times);
-% error_mu = norm((mu-mu_hat),'fro')
-% error_Psi = norm((Psi-Psi_hat),'fro')
+[mu_hat,Psi_hat,q_store,f_store,validation_q_store] = EM_unknown_tau_v2(Y, nu, max_iteration_times);
+error_mu = norm((mu-mu_hat),'fro')
+error_Psi = norm((Psi-Psi_hat),'fro')
 
 % [Y2] = MVTrand(n,mu,Psi,nu);
 % [mu_hat2,Psi_hat2,q_store,f_store] = EM_unknown_tau_v2(Y2', nu, max_iteration_times);
 % error_mu2 = norm((mu-mu_hat2),'fro')
 % error_Psi2 = norm((Psi-Psi_hat2),'fro')
 
-function [mu_hat,Psi_hat,q_store,f_store] = EM_unknown_tau_v2(Y, nu, max_iteration_times)
+function [mu_hat,Psi_hat,q_store,f_store,validation_q_store] = EM_unknown_tau_v2(Y, nu, max_iteration_times)
     %init
     [p,n] = size(Y);
     mu_k = rand(p,1);
@@ -44,6 +31,7 @@ function [mu_hat,Psi_hat,q_store,f_store] = EM_unknown_tau_v2(Y, nu, max_iterati
     validation_q = @(n,mu,Psi,S_tau,S_tau_Y,S_tau_Y_Y) -n/2*log(det(Psi)) -1/2*trace(inv(Psi)*...
         S_tau_Y_Y) + mu' *inv(Psi) * S_tau_Y -1/2*mu'*inv(Psi)*mu*S_tau;
     validation_f_store = [];
+    validation_f = @(n,mu,Psi,S_tau,S_tau_Y,S_tau_Y_Y) n+1;
     for iter = 1:max_iteration_times
         %applyingEM to do estimation for paremeters
         [S_tau,S_tau_Y,S_tau_Y_Y] = calculateStatistics(Y, mu_k, Psi_k, nu);
@@ -77,9 +65,7 @@ function [mu_hat,Psi_hat,q_store,f_store] = EM_unknown_tau_v2(Y, nu, max_iterati
         mu_k = mu_hat;
         Psi_k = Psi_hat;
         tmp_q = validation_q(n,mu_k,Psi_k,S_tau,S_tau_Y,S_tau_Y_Y);
-        validation_q_store = [validation_q_store tmp_q];
-        tmp_f = validation_monotonicity(Y,nu,mu_k,Psi_k);
-        validation_f_store = [validation_f_store tmp_f];
+tmp_q        f = validation_monotonicity(Y,nu,mu,Psi)
     end
 
     % when the estimation ends, start plotting with the store vectors
@@ -115,9 +101,6 @@ function [mu_hat,Psi_hat,q_store,f_store] = EM_unknown_tau_v2(Y, nu, max_iterati
     subplot(2,1,1);
     plot(1:size(validation_q_store,2), validation_q_store,'LineWidth', 2, 'DisplayName', 'validation q monotonicity');
     title('validation the monotonicity of q function');
-    subplot(2,1,2);
-    plot(1:size(validation_f_store,2), validation_f_store,'LineWidth', 2, 'DisplayName', 'validation f monotonicity');
-    title('validation the monotonicity of f function');
 end
 
 function [S_tau,S_tau_Y,S_tau_Y_Y] = calculateStatistics(Y, mu, Psi, nu)
