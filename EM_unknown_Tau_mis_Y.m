@@ -44,7 +44,7 @@ function [S_tau,S_tau_Y,S_tau_Y_Y] = calculateStatistics(Y, mu_k, Psi_k, nu)
         % calculate delta_i(need check!!!)
         delta_i = (Yi(mask_ob) - mu_k(mask_ob))' *inv(Psi_k(mask_ob,mask_ob)) ...
             *(Yi(mask_ob) - mu_k(mask_ob));
-        omega(i) = (nu + size(Yi(mask_ob),2)) / (nu + delta_i);
+        omega(i) = (nu + length(Yi(mask_ob))) / (nu + delta_i);
 
         % get the conditional mean to represents Yi_hat
         nan_indices = find(mask_mis);
@@ -61,17 +61,16 @@ function [S_tau,S_tau_Y,S_tau_Y_Y] = calculateStatistics(Y, mu_k, Psi_k, nu)
             % Fill the Nan value
             Yi_hat(nan_indices) = mu_mis; 
             %calculate Psi_i
-%             Psi_mis = (Psi_k(mask_mis,mask_mis) - Psi_k(mask_mis,mask_ob) ...
-%                 * inv(Psi_k(mask_ob,mask_ob)) *Psi_k(mask_ob,mask_mis));
-%             %get the ronud result
-%             Psi_mis = round(Psi_mis, 5);
-%             Psi_i = zeros(p);
-%             Psi_i(mask_mis,mask_mis) = Psi_mis;
-            Psi_mis = Psi_k(mask_mis,mask_mis) - Psi_k(mask_mis,mask_ob) ...
-                * inv(Psi_k(mask_ob,mask_ob)) *Psi_k(mask_ob,mask_mis);
-            Psi_i(mask_mis,nan_indices) = Psi_mis;
-            Psi_i(nan_indices,mask_mis) = Psi_mis';
-            Psi_i(mask_ob,mask_ob) = zeros(sum(mask_ob));
+            Psi_mis = (Psi_k(mask_mis,mask_mis) - Psi_k(mask_mis,mask_ob) ...
+                * inv(Psi_k(mask_ob,mask_ob)) *Psi_k(mask_ob,mask_mis));
+            %get the ronud result
+            Psi_i = zeros(p);
+            Psi_i(mask_mis,mask_mis) = Psi_mis;
+%             Psi_mis = Psi_k(mask_mis,mask_mis) - Psi_k(mask_mis,mask_ob) ...
+%                 * inv(Psi_k(mask_ob,mask_ob)) *Psi_k(mask_ob,mask_mis);
+%             Psi_i(mask_mis,nan_indices) = Psi_mis;
+%             Psi_i(nan_indices,mask_mis) = Psi_mis';
+%             Psi_i(mask_ob,mask_ob) = zeros(sum(mask_ob));
         end
         S_tau_Y = S_tau_Y + omega(i) * Yi_hat;
         S_tau_Y_Y = S_tau_Y_Y + omega(i) * Yi_hat * Yi_hat';
