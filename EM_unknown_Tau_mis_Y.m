@@ -45,6 +45,7 @@ function [S_tau,S_tau_Y,S_tau_Y_Y] = calculateStatistics(Y, mu_k, Psi_k, nu)
         delta_i = (Yi(mask_ob) - mu_k(mask_ob))' *inv(Psi_k(mask_ob,mask_ob)) ...
             *(Yi(mask_ob) - mu_k(mask_ob));
         omega(i) = (nu + length(Yi(mask_ob))) / (nu + delta_i);
+        omega(i) = omega(i);
 
         % get the conditional mean to represents Yi_hat
         nan_indices = find(mask_mis);
@@ -56,7 +57,10 @@ function [S_tau,S_tau_Y,S_tau_Y_Y] = calculateStatistics(Y, mu_k, Psi_k, nu)
             % Initialize Yi_hat
             Yi_hat = zeros(size(Yi)); 
             Yi_hat(mask_ob) = Yi(mask_ob);
-            mu_mis = mu_k(mask_mis) - Psi_k(mask_mis,mask_ob) * inv(Psi_k(mask_ob,mask_ob)) ...
+%             mu_mis = mu_k(mask_mis) - Psi_k(mask_mis,mask_ob) * inv(Psi_k(mask_ob,mask_ob)) ...
+%                 *(Yi(mask_ob)-mu_k(mask_ob));
+            % correct: there should be plus rather than minus
+            mu_mis = mu_k(mask_mis) + Psi_k(mask_mis,mask_ob) * inv(Psi_k(mask_ob,mask_ob)) ...
                 *(Yi(mask_ob)-mu_k(mask_ob));
             % Fill the Nan value
             Yi_hat(nan_indices) = mu_mis; 
@@ -66,11 +70,6 @@ function [S_tau,S_tau_Y,S_tau_Y_Y] = calculateStatistics(Y, mu_k, Psi_k, nu)
             %get the ronud result
             Psi_i = zeros(p);
             Psi_i(mask_mis,mask_mis) = Psi_mis;
-%             Psi_mis = Psi_k(mask_mis,mask_mis) - Psi_k(mask_mis,mask_ob) ...
-%                 * inv(Psi_k(mask_ob,mask_ob)) *Psi_k(mask_ob,mask_mis);
-%             Psi_i(mask_mis,nan_indices) = Psi_mis;
-%             Psi_i(nan_indices,mask_mis) = Psi_mis';
-%             Psi_i(mask_ob,mask_ob) = zeros(sum(mask_ob));
         end
         S_tau_Y = S_tau_Y + omega(i) * Yi_hat;
         S_tau_Y_Y = S_tau_Y_Y + omega(i) * Yi_hat * Yi_hat';
@@ -80,6 +79,7 @@ function [S_tau,S_tau_Y,S_tau_Y_Y] = calculateStatistics(Y, mu_k, Psi_k, nu)
     %secondly, calculate the Statistics
     S_tau = sum(omega);
     S_tau_Y_Y = S_tau_Y_Y + Psi_i_cnt;
+    S_tau_Y_Y = S_tau_Y_Y;
 end
 
 

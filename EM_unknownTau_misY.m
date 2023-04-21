@@ -83,6 +83,11 @@ function [y_predict,Psi_i] = conditional_mean(mu_k,Psi_k,Yi)
     %used to calculation S_tau_Y_Y
     Psi_i = zeros(size(Yi,1));
     Psi_i(mask_mis,mask_mis) = Psi_mis;
+%             Psi_mis = Psi_k(mask_mis,mask_mis) - Psi_k(mask_mis,mask_ob) ...
+%                 * inv(Psi_k(mask_ob,mask_ob)) *Psi_k(mask_ob,mask_mis);
+%             Psi_i(mask_mis,nan_indices) = Psi_mis;
+%             Psi_i(nan_indices,mask_mis) = Psi_mis';
+%             Psi_i(mask_ob,mask_ob) = zeros(sum(mask_ob));
     % Fill the Nan value
     y_predict(nan_indices) = mu_mis; 
 end
