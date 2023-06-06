@@ -1,4 +1,4 @@
-function [mu_hat, Psi_hat] = EM_unknown_Tau_mis_Y(Y, nu, iteration_time)
+function [mu_hat, Psi_hat] = validationOfAlgorithm(Y, nu, iteration_time)
     %initialize
     [p, n] = size(Y);
     Y_ob = Y(:, all(~isnan(Y)));
@@ -83,6 +83,39 @@ function [S_tau,S_tau_Y,S_tau_Y_Y] = calculateStatistics(Y, mu_k, Psi_k, nu)
     S_tau_Y_Y = S_tau_Y_Y;
 
     %%calculate the Q and F function
+end
+
+function [fValue,qValue] = calculationFAndQ(Y,Psi,mu,nu,t)
+    [p,n] = size(Y);
+    fValue = zeros(1,size(t,2));
+    qValue = zeros(1,size(t,2));
+    for i = 1: size(t,2)
+        mu_delta = mu + t(i)*randn(p,1);
+        while true
+            % 生成随机矩阵A
+            Delta = randn(p, p); % 从正态分布生成随机数填充A的元素
+            % 检查Ψ + t*A的正定性
+            if all(eig(Psi + curT * Delta) > 0)
+                break; % 如果满足正定性条件，退出循环
+            end
+        end
+        Psi_delta = Psi + t(i) * Delta;
+        const = - n / 2 * log(det(Psi_delta));
+        tmp = 0;
+        %calculate f
+        for j = 1:n
+            tmp = tmp+ log(1 + (Y(:,j) - mu_delta)' * inv(Psi_delta) * (Y(:,j) - mu_delta) / nu);
+        end
+        fValue(i) = const -(nu + p)/2 * tmp;
+           
+        omega = zeros(1,n);
+        %calculate q
+        for j = 1:n
+            tmp = tmp+ log(1 + (Y(:,j) - mu_delta)' * inv(Psi_delta) * (Y(:,j) - mu_delta) / nu);
+        end
+        
+    end
+    
 end
 
 
