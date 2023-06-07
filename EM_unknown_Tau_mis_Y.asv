@@ -3,18 +3,14 @@ function [mu_hat, Psi_hat] = EM_unknown_Tau_mis_Y(Y, nu, iteration_time)
     [p, n] = size(Y);
     Y_ob = Y(:, all(~isnan(Y)));
     %calculate the initial mu and Psi with fully observed value.
-%     if isempty(Y_ob) || length(Y_ob) == length(Y) || size(Y_ob,2) <=1
-%     if length(Y_ob) == length(Y) || size(Y_ob,2) <=1
-%         mu_k = rand(p,1);
-%         Psi_k = rand(p);
-%         Psi_k = Psi_k* Psi_k.'; 
-%     else
-%         mu_k = mean(Y_ob, 2);
-%         Psi_k = cov(Y_ob');
-%     end
-    mu_k = rand(p,1);
-    Psi_k = rand(p);
-    Psi_k = Psi_k* Psi_k.'; 
+    if isempty(Y_ob) || length(Y_ob) == length(Y)
+        mu_k = rand(p,1);
+        Psi_k = rand(p);
+        Psi_k = Psi_k* Psi_k.'; 
+    else
+        mu_k = mean(Y_ob, 2);
+        Psi_k = cov(Y_ob');
+    end
     for iter = 1: iteration_time
         %E -step
         [S_tau,S_tau_Y,S_tau_Y_Y] = calculateStatistics(Y, mu_k, Psi_k, nu);
@@ -51,8 +47,7 @@ function [S_tau,S_tau_Y,S_tau_Y_Y] = calculateStatistics(Y, mu_k, Psi_k, nu)
         mask_ob = ~isnan(Yi);
         mask_mis = ~mask_ob;
         % calculate delta_i(need check!!!)
-        %此处加个判断，如果接近奇异值，则重新随机mu_k
-        delta_i = (Yi(mask_ob) - mu_k(mask_ob))' * inv(Psi_k(mask_ob,mask_ob)) ...
+        delta_i = (Yi(mask_ob) - mu_k(mask_ob))' *inv(Psi_k(mask_ob,mask_ob)) ...
             *(Yi(mask_ob) - mu_k(mask_ob));
         omega(i) = (nu + length(Yi(mask_ob))) / (nu + delta_i);
 
@@ -88,6 +83,9 @@ function [S_tau,S_tau_Y,S_tau_Y_Y] = calculateStatistics(Y, mu_k, Psi_k, nu)
     %secondly, calculate the Statistics
     S_tau = sum(omega);
     S_tau_Y_Y = S_tau_Y_Y + Psi_i_cnt;
+    S_tau_Y_Y = S_tau_Y_Y;
+
+    %%calculate the Q and F function
 end
 
 

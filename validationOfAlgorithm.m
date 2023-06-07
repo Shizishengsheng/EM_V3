@@ -12,7 +12,7 @@ function [mu_hat, Psi_hat] = validationOfAlgorithm(Y, nu, iteration_time)
         Psi_k = cov(Y_ob');
     end
 
-    t= -3:0.1:3;
+    t= -2:0.1:2;
     f_store = [];
     q_store = [];
 
@@ -21,6 +21,7 @@ function [mu_hat, Psi_hat] = validationOfAlgorithm(Y, nu, iteration_time)
         [S_tau,S_tau_Y,S_tau_Y_Y,~] = calculateStatistics(Y, mu_k, Psi_k, nu);
         %draw Q and F
         if iter <=6
+            fprintf("start calculate value, iter = %d\n",iter)
             [fValue,qValue] = calculationFAndQ(Y,Psi_k,mu_k,nu,t);
             f_store = [f_store fValue'];
             q_store = [q_store qValue'];
@@ -39,8 +40,8 @@ function [mu_hat, Psi_hat] = validationOfAlgorithm(Y, nu, iteration_time)
         Psi_hat = (S_tau_Y_Y - ((S_tau_Y)*(S_tau_Y)')/S_tau)/n;
 
          % check the convegency
-        if norm((mu_hat - mu_k),'fro') <= 0.0001 && norm((Psi_hat - Psi_k),'fro') ...
-                <= 0.0005 || iter == iteration_time
+        if norm((mu_hat - mu_k),'fro') <= 0.001 && norm((Psi_hat - Psi_k),'fro') ...
+                <= 0.005 || iter == iteration_time
             fprintf('iteration ends in the %d-th round.\n',iter)
             break
         end
@@ -138,6 +139,7 @@ function [fValue,qValue] = calculationFAndQ(Y,Psi,mu,nu,t)
         while true
             L = chol(Psi, 'lower'); % 对Psi进行Cholesky分解
             Delta = L' * randn(p); % 生成随机矩阵
+            %%这里应该放到循环外
             Psi_delta= Psi + t(i) * Delta;
             if (all(eig(Psi_delta)) > 0)
                 break;

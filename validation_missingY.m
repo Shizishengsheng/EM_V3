@@ -2,16 +2,16 @@
 clear;clc;close all;
 p=50;
 n = 100:100:500;
-missing_rate = 0.0;
+missing_rate = 0.1;
 error_mu =zeros(size(n));
 % error_mu2 =zeros(size(n));
 error_Psi = zeros(size(n));
 % error_Psi2 = zeros(size(n));
-try_times= 100;
+try_times= 10;
 for i = 1:try_times
     for j = 1:length(n)
         [Y, tau, nu, mu, Psi] = GenData(p, n(j), missing_rate);
-        [mu_hat, Psi_hat] = EM_unknown_Tau_mis_Y(Y, nu, 300);
+        [mu_hat, Psi_hat] = EM_unknown_Tau_mis_Y(Y, nu, 2000);
         error_mu(j) = error_mu(j) + norm((mu-mu_hat),'fro')/norm(mu,'fro');
         error_Psi(j) = error_Psi(j)+ norm((Psi-Psi_hat),'fro')/norm(Psi,'fro');
 %         [mu_hat, Psi_hat] = EM_unknownTau_misY(Y, nu, 100);
