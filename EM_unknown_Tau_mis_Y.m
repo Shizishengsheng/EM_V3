@@ -23,8 +23,11 @@ function [mu_hat, Psi_hat] = EM_unknown_Tau_mis_Y(Y, nu, iteration_time)
         Psi_hat = (S_tau_Y_Y - ((S_tau_Y)*(S_tau_Y)')/S_tau)/n;
 
         if(iter == iteration_time)
-            fprintf('not Converged!.\n')
-            break
+            fprintf('not Converged! regenerating start point.\n')
+            mu_k = rand(p,1);
+            Psi_k = rand(p);
+            Psi_k = Psi_k* Psi_k.'; 
+            iter = 1;
         end
          % check the convegency
         if norm((mu_hat - mu_k),'fro') <= 0.001 && norm((Psi_hat - Psi_k),'fro') ...
