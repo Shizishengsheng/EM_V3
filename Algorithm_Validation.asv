@@ -1,0 +1,176 @@
+%%edited at 6.19
+function [mu_hat, Psi_hat] = Algorithm_Validation(Y, nu, iteration_time)
+    %initialize
+    [p, n] = size(Y);
+    Y_ob = Y(:, all(~isnan(Y)));
+    %calculate the initial mu and Psi with fully observed value.
+%     if isempty(Y_ob) || length(Y_ob) == length(Y) || size(Y_ob,2) <=1
+%     if length(Y_ob) == length(Y) || size(Y_ob,2) <=1
+%         mu_k = rand(p,1);
+%         Psi_k = rand(p);
+%         Psi_k = Psi_k* Psi_k.';  
+%     else
+%         mu_k = mean(Y_ob, 2);
+%         Psi_k = cov(Y_ob');
+%     end
+    mu_k = rand(p,1);
+    Psi_k = rand(p);
+    Psi_k = Psi_k* Psi_k.'; 
+
+    % init for plotting
+    f_store = [];
+    q_store = [];
+    t = -3:0.1:3;
+    for iter = 1: iteration_time
+        %E -step
+        [S_tau,S_tau_Y,S_tau_Y_Y, omega_k] = calculateStatistics(Y, mu_k, Psi_k, nu);
+        %M-step
+        mu_hat = S_tau_Y/S_tau;
+        Psi_hat = (S_tau_Y_Y - ((S_tau_Y)*(S_tau_Y)')/S_tau)/n;
+
+        if(iter == iteration_time)
+            fprintf('not Converged! regenerating start point.\n')
+            mu_k = rand(p,1);
+            Psi_k = rand(p);
+            Psi_k = Psi_k* Psi_k.'; 
+            iter = 1;
+        end
+         % check the convegency
+        if norm((mu_hat - mu_k),'fro') <= 0.001 && norm((Psi_hat - Psi_k),'fro') ...
+                <= 0.005 
+            fprintf('iteration ends in the %d-th round.\n',iter)
+            break
+        end
+
+        % update the value that will be used in next iteration
+        mu_k = mu_hat; 
+        Psi_k = Psi_hat; 
+        if (iter <= 6)
+            fprintf('cur iteration: %d-th round, plotting\n',iter)
+            [q, f] = calculateFuncValue(Y, mu_k, Psi_k, omega_k, nu, t);
+            fprintf('size of f:%d,%d\n',size(f))
+            f_store = [f_store f'];
+            idx = find(t == 0);
+            q = q + (f(idx) - q(idx));
+            q_store = [q_store q'];
+        end
+    end
+
+    figure;
+    % There are k iterations
+    for k = 2:5
+%         subplot(size(f_store,2),1,k);
+        subplot(4,1,k-1);
+        plot(t, f_store(:,k)', 'r', 'LineWidth', 2, 'DisplayName', 'f');
+        hold on;
+        plot(t, q_store(:,k)', 'b', 'LineWidth', 2, 'DisplayName', 'q');
+        hold on;
+        legend('f','q');
+    end
+end
+function [S_tau,S_tau_Y,S_tau_Y_Y, omega] = calculateStatistics(Y, mu_k, Psi_k, nu)
+    [p, n] = size(Y);
+    S_tau_Y = zeros(p,1);
+    S_tau_Y_Y = zeros(p,p);
+    Psi_i_cnt = zeros(p,p);
+    % firstly, get the expectation value of tau
+    omega = zeros(1,n);
+    for i = 1:n
+        Yi = Y(:,i);
+        % get the observed value
+        mask_ob = ~isnan(Yi);
+        mask_mis = ~mask_ob;
+        % calculate delta_i(need check!!!)
+        %此处加个判断，如果接近奇异值，则重新随机mu_k
+        delta_i = (Yi(mask_ob) - mu_k(mask_ob))' * inv(Psi_k(mask_ob,mask_ob)) ...
+            *(Yi(mask_ob) - mu_k(mask_ob));
+        omega(i) = (nu + length(Yi(mask_ob))) / (nu + delta_i);
+
+        % get the conditional mean to represents Yi_hat
+        nan_indices = find(mask_mis);
+        if isempty(nan_indices)
+            Yi_hat = Yi;
+            Psi_i = zeros(p);
+        else
+            % Fill the known value
+            % Initialize Yi_hat
+            Yi_hat = zeros(size(Yi)); 
+            Yi_hat(mask_ob) = Yi(mask_ob);
+%             mu_mis = mu_k(mask_mis) - Psi_k(mask_mis,mask_ob) * inv(Psi_k(mask_ob,mask_ob)) ...
+%                 *(Yi(mask_ob)-mu_k(mask_ob));
+            % correct: there should be plus rather than minus
+            mu_mis = mu_k(mask_mis) + Psi_k(mask_mis,mask_ob) * inv(Psi_k(mask_ob,mask_ob)) ...
+                *(Yi(mask_ob)-mu_k(mask_ob));
+            % Fill the Nan value
+            Yi_hat(nan_indices) = mu_mis; 
+            %calculate Psi_i
+            Psi_mis = (Psi_k(mask_mis,mask_mis) - Psi_k(mask_mis,mask_ob) ...
+                * inv(Psi_k(mask_ob,mask_ob)) *Psi_k(mask_ob,mask_mis));
+            %get the ronud result
+            Psi_i = zeros(p);
+            Psi_i(mask_mis,mask_mis) = Psi_mis;
+        end
+        S_tau_Y = S_tau_Y + omega(i) * Yi_hat;
+        S_tau_Y_Y = S_tau_Y_Y + omega(i) * Yi_hat * Yi_hat';
+        Psi_i_cnt = Psi_i_cnt + Psi_i;
+    end
+
+    %secondly, calculate the Statistics
+    S_tau = sum(omega);
+    S_tau_Y_Y = S_tau_Y_Y + Psi_i_cnt;
+end
+
+function [q, f] = calculateFuncValue(Y, mu_k, Psi_k, omega_k, nu, t)
+    [p,n] = size(Y);
+    q = zeros(1,n);
+    f = zeros(1,n);
+    % get the random direction of mu and Psi
+    randMu = randn(p,1);
+    L = chol(Psi_k, 'lower'); % Cholesky decomposition of Psi
+    randPsi = L' * randn(p); 
+
+    for i = 1:size(t,2)
+        mu_delta = mu_k + t(i)* randMu;
+        Psi_delta= Psi_k + t(i) * randPsi;
+        % check if the Psi_delta is PD
+        if (all(eig(Psi_delta)) <= 0)
+            fprintf('not PD starts to regenerate.\n')
+            while true
+                L = chol(Psi_k, 'lower');
+                randPsi = L' * randn(p); 
+                Psi_delta= Psi + t(i) * randPsi;
+                if (all(eig(Psi_delta)) > 0)
+                    fprintf('got a PD random matrix,break.\n')
+                    break;
+                end
+            end
+        end
+        f(i) = sum(log(mvt_pdf(Y, mu_delta, Psi_delta, nu)));
+        %% use which omega?
+        q(i) = sum(log(mvn_pdf(Y, mu_delta, Psi_delta, omega_k)));
+    end
+end
+function pdf = mvt_pdf(Y,mu,Psi,nu)
+    [p, n] = size(Y);
+    pdf = zeros(1, n);
+    for i = 1:n
+        const_i = gamma((nu+p)/2) / (gamma(nu/2) * (nu*pi)^(p/2) * sqrt(det(Psi)));
+        deltaY = (Y(:,i) - mu)' * inv(Psi) * (Y(:,i) - mu);
+        pdf(i) = const_i * (1 + deltaY/nu)^(-(nu+p)/2);
+    end
+end
+
+function pdf = mvn_pdf(Y, mu, Psi, omega)
+    [p,n] = size(Y);
+    pdf = zeros(1,n);
+    for i =1:n
+        const = (2*pi)^(-p/2);
+        pdf(i) =  const * det(Psi/omega(i))^(-1/2) * exp(-0.5*(Y(:,i)-mu)'*inv(Psi/omega(i))*(Y(:,i)-mu));
+    end
+end
+
+
+
+
+
+
