@@ -55,10 +55,10 @@
 
 clear;clc;close all;
 p = 50;
-n = 100;
-missing_rate = 0.0;
+n = 1000;
+missing_rate = 0.15;
 [Y, tau, nu, mu, Psi] = GenData(p, n, missing_rate);
-[mu_hat, Psi_hat, f_store, q_store,] = Algorithm_Validation(Y, nu, 500);
+[mu_hat, Psi_hat, f_store, q_store, omega_store] = Algorithm_Validation(Y, nu, 2000);
 
 
 

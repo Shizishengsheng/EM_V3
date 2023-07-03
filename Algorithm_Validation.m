@@ -1,5 +1,5 @@
 %%edited at 6.19
-function [mu_hat, Psi_hat,f_store, q_store] = Algorithm_Validation(Y, nu, iteration_time)
+function [mu_hat, Psi_hat,f_store, q_store, omega_store] = Algorithm_Validation(Y, nu, iteration_time)
     %initialize
     [p, n] = size(Y);
 %     Y_ob = Y(:, all(~isnan(Y)));
@@ -20,6 +20,7 @@ function [mu_hat, Psi_hat,f_store, q_store] = Algorithm_Validation(Y, nu, iterat
     % init for plotting
     f_store = [];
     q_store = [];
+    omega_store = [];
 %     testf = [];
     t = -3:0.1:3;
     for iter = 1: iteration_time
@@ -57,13 +58,14 @@ function [mu_hat, Psi_hat,f_store, q_store] = Algorithm_Validation(Y, nu, iterat
             idx = find(t == 0);
             q = q + (f(idx) - q(idx));
             q_store = [q_store q'];
+            omega_store = [omega_store omega_k'];
         end
     end
 
     % There are k iterations
     figure;
-    for k = 2:5
-        subplot(4,1,k-1);
+    for k = 2:6
+        subplot(5,1,k-1);
         plot(t, f_store(:,k)', 'r', 'LineWidth', 2, 'DisplayName', 'f');
         hold on;
         plot(t, q_store(:,k)', 'b', 'LineWidth', 2, 'DisplayName', 'q');
@@ -124,7 +126,7 @@ function [S_tau,S_tau_Y,S_tau_Y_Y, omega] = calculateStatistics(Y, mu_k, Psi_k, 
 end
 
 function [q, f] = calculateFuncValue(Y, mu_k, Psi_k, omega_k, nu, t)
-    [p,n] = size(Y);
+    [p,~] = size(Y);
     q = zeros(1,size(t,2));
     f = zeros(1,size(t,2));
     % get the random direction of mu and Psi
@@ -153,13 +155,18 @@ function [q, f] = calculateFuncValue(Y, mu_k, Psi_k, omega_k, nu, t)
         q(i) = sum(log(mvn_pdf(Y, mu_delta, Psi_delta, omega_k)));
     end
 end
-function pdf = mvt_pdf(Y,mu,Psi,nu)
+function pdf = mvt_pdf(Y, mu, Psi, nu)
     [p, n] = size(Y);
     pdf = zeros(1, n);
     for i = 1:n
-        const_i = gamma((nu+p)/2) / (gamma(nu/2) * (nu*pi)^(p/2) * sqrt(det(Psi)));
-        deltaY = (Y(:,i) - mu)' * inv(Psi) * (Y(:,i) - mu);
-        pdf(i) = const_i * (1 + deltaY/nu)^(-(nu+p)/2);
+        Y_i = Y(:,i);
+        mask_ob = ~isnan(Y_i);
+        const_i = gamma((nu+p)/2) / ((gamma(nu/2) * (nu*pi)^(p/2) * sqrt(det(Psi))));
+        delta_i = (Y_i(mask_ob) - mu(mask_ob))' * pinv(Psi(mask_ob, mask_ob)) ...
+            *(Y_i(mask_ob) - mu(mask_ob));
+%         deltaY = (Y(:,i) - mu)' * inv(Psi) * (Y(:,i) - mu);
+%         pdf(i) = const_i * (1 + deltaY/nu)^(-(nu+p)/2);
+        pdf(i) = const_i * (1 + delta_i/nu)^(-(nu+p)/2);
     end
 end
 
@@ -167,8 +174,33 @@ function pdf = mvn_pdf(Y, mu, Psi, omega)
     [p,n] = size(Y);
     pdf = zeros(1,n);
     for i =1:n
+        Y_i = Y(:,i);
+        mask_ob = ~isnan(Y_i);
         const = (2*pi)^(-p/2);
-        pdf(i) =  const * det(Psi/omega(i))^(-1/2) * exp(-0.5*(Y(:,i)-mu)'*inv(Psi/omega(i))*(Y(:,i)-mu));
+
+        pinv_result = pinv(Psi(mask_ob, mask_ob)/omega(i));
+        if any(isnan(pinv_result(:))) || any(isinf(pinv_result(:)))
+            % pinv_result 包含 NaN 或 Inf 值，设置断点
+            disp('pinv_result has Nan or Inf');
+            keyboard;
+        end
+
+        if rank(Psi(mask_ob, mask_ob)) ~= min(size(Psi(mask_ob, mask_ob)))
+            disp('Psi(mask_ob, mask_ob) not full rank');
+        end
+        delta_i = (Y_i(mask_ob) - mu(mask_ob))' * pinv(Psi(mask_ob, mask_ob)/omega(i)) ...
+            *(Y_i(mask_ob) - mu(mask_ob));
+
+        if any(isnan(delta_i(:))) || any(isinf(delta_i(:)))
+            % pinv_result 包含 NaN 或 Inf 值，设置断点
+            disp('delta_i has Nan or Inf');
+            keyboard;
+        end
+%         if omega(i) <= 0
+%             fprintf('omega(i) is zero or negative, regenerating.\n');
+%             omega(i) = generateValidOmega();
+%         end
+        pdf(i) =  const * det(Psi/omega(i))^(-1/2) * exp(-0.5*delta_i);
     end
 end
 
